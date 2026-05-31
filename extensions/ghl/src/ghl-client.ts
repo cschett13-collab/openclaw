@@ -61,7 +61,11 @@ export function buildGhlUrl(
  * Every request carries the mandatory `Version` header. Without it the
  * LeadConnector v2 API silently drops fields, so it is never optional here.
  */
-function buildGhlHeaders(apiKey: string, version: string, method: "GET" | "POST"): Record<string, string> {
+function buildGhlHeaders(
+  apiKey: string,
+  version: string,
+  method: "GET" | "POST",
+): Record<string, string> {
   const headers: Record<string, string> = {
     Authorization: `Bearer ${apiKey}`,
     Version: version,
@@ -149,7 +153,7 @@ function wrapContactString(value: unknown): string | undefined {
   if (typeof value !== "string" || value.length === 0) {
     return undefined;
   }
-  return wrapExternalContent(value, { source: "contact", includeWarning: false });
+  return wrapExternalContent(value, { source: "api", includeWarning: false });
 }
 
 type NormalizedContact = Record<string, unknown>;
@@ -276,9 +280,7 @@ export type GhlGetContactParams = {
 };
 
 /** GET /contacts/{id}. A 404 (or `found:false`) is returned as a clean status. */
-export async function getGhlContact(
-  params: GhlGetContactParams,
-): Promise<Record<string, unknown>> {
+export async function getGhlContact(params: GhlGetContactParams): Promise<Record<string, unknown>> {
   const result = await ghlRequest({
     cfg: params.cfg,
     method: "GET",

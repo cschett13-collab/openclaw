@@ -722,6 +722,16 @@ importers:
         specifier: workspace:*
         version: link:../../packages/plugin-sdk
 
+  extensions/ghl:
+    dependencies:
+      typebox:
+        specifier: 1.1.38
+        version: 1.1.38
+    devDependencies:
+      '@openclaw/plugin-sdk':
+        specifier: workspace:*
+        version: link:../../packages/plugin-sdk
+
   extensions/github-copilot:
     dependencies:
       '@clack/prompts':
@@ -1914,6 +1924,7 @@ packages:
   '@aws-sdk/core@3.974.10':
     resolution: {integrity: sha512-ZGFFlYynBR78Y/F8b/7y4i4sgW/iGwJSjoM7AZo5Et6vyr4/L0bunN+uzKMsvecCZyqcPp4RRK7Rs17l0kMujg==}
     engines: {node: '>=20.0.0'}
+    deprecated: Deprecated due to an error deserialization bug in JSON 1.0 protocol services, see https://github.com/aws/aws-sdk-js-v3/pull/8031. Newer version available.
 
   '@aws-sdk/crc64-nvme@3.972.8':
     resolution: {integrity: sha512-fVfUCL/Xh2zINYMPZvj+iBn6XWouQf0DAnjaWCI9MkmqXzL2Iy5FoQB8O7syFe6gN6AH1ecDDU58T51Ou0kFkA==}
@@ -4748,6 +4759,10 @@ packages:
   baileys@7.0.0-rc11:
     resolution: {integrity: sha512-yi7An4f5DmShjb75L8eSttrA6HLy7PYoP3XIQBmvQ5yH8vVZWBXZDogDxfGQQL6N98ELRwznG7puhjyLEa5CQg==}
     engines: {node: '>=20.0.0'}
+    deprecated: |-
+      This version is affected by a zero-day vulnerability that allows spoofing of messages, please update to
+        the latest versions (6.7.22^ or 7.0.0-rc12^)! For more information, check out the public advisory at
+        https://github.com/WhiskeySockets/Baileys/security/advisories/GHSA-qvv5-jq5g-4cgg
     peerDependencies:
       audio-decode: ^2.1.3
       jimp: ^1.6.1
