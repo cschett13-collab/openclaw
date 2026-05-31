@@ -19,6 +19,8 @@ permissions: {}
 
 jobs:
   auto-response:
+    # Org automation needs the GH App secrets; skip cleanly in forks.
+    if: github.repository_owner == 'openclaw'
     permissions:
       contents: read
       issues: write

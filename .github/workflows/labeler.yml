@@ -27,6 +27,8 @@ permissions: {}
 
 jobs:
   label:
+    # Org automation needs the GH App secrets; skip cleanly in forks.
+    if: github.repository_owner == 'openclaw'
     permissions:
       contents: read
       pull-requests: write
@@ -460,7 +462,7 @@ jobs:
             }
 
   backfill-pr-labels:
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && github.repository_owner == 'openclaw'
     permissions:
       contents: read
       pull-requests: write
@@ -760,6 +762,8 @@ jobs:
             core.info(`Processed ${processed} pull requests.`);
 
   label-issues:
+    # Org automation needs the GH App secrets; skip cleanly in forks.
+    if: github.repository_owner == 'openclaw'
     permissions:
       issues: write
     runs-on: ubuntu-24.04
