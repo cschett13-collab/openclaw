@@ -12,6 +12,8 @@ can write, compile, and run CUDA/Python on your machine — no cloud, no API key
 | `setup_rtx5090.ps1` | Windows host prep: driver check + WSL2 (then hand off to the `.sh`). |
 | `requirements.txt`  | Modern LangChain + GPU libs (torch installed separately from cu128). |
 | `agent_engine.py`   | The agent: local Ollama model + **real, sandboxed** compile/run tools. |
+| `verify_gpu.py`     | Standalone smoke test: torch GPU op + `nvcc -arch=sm_120` compile/run + optional PyNvVideoCodec import. |
+| `video_demo.py`     | GPU video decode/encode (NVDEC/NVENC) via PyNvVideoCodec, zero-copy to PyTorch. |
 
 ## Quick start
 
@@ -27,6 +29,17 @@ python agent_engine.py "Write a CUDA kernel that adds two vectors of 1M floats a
 **Windows:** run `setup_rtx5090.ps1` elevated → it installs WSL2 → then run the
 `.sh` inside Ubuntu. Native-Windows PyTorch on Blackwell is still unreliable;
 WSL2 is the supported path.
+
+**Prove the GPU actually works (don't ask the LLM to "verify" it):**
+```bash
+python verify_gpu.py        # real torch op + nvcc sm_120 compile/run; exit 0 = good
+```
+
+**GPU video (NVDEC/NVENC):**
+```bash
+python video_demo.py decode myclip.mp4            # decode -> GPU torch tensors
+python video_demo.py transcode myclip.mp4 out.h264
+```
 
 ## Why the original one-liner script failed
 

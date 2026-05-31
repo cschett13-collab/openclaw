@@ -15,6 +15,10 @@ ollama>=0.4.0                    # python client for the local Ollama daemon
 # `nvidia-tensorrt` combo is deprecated and unnecessary.
 tensorrt-cu12>=10.0.0 ; platform_system != "Windows"
 
+# --- GPU video encode/decode (NVDEC/NVENC) ---
+# Needs an NVIDIA GPU + driver; no CPU/macOS wheel. Used by video_demo.py.
+PyNvVideoCodec>=2.0.0 ; platform_system != "Darwin"
+
 # --- Image / video generation toolchain ---
 diffusers>=0.31.0
 transformers>=4.46.0
