@@ -16,6 +16,8 @@ can write, compile, and run CUDA/Python on your machine — no cloud, no API key
 | `run_everything.sh` | Gated entrypoint: syncs deps → runs the smoke test → starts the agent **only if it passes**. |
 | `verify_gpu.py`     | Standalone smoke test: torch GPU op + `nvcc -arch=sm_120` compile/run + optional PyNvVideoCodec import. |
 | `video_demo.py`     | GPU video decode/encode (NVDEC/NVENC) via PyNvVideoCodec, zero-copy to PyTorch. |
+| `team.py`           | CLI for the **local AI Team** — six purpose-scoped agents + orchestration (see below). |
+| `local_ai/`         | The team package: `llm`, `memory`, `tools`, `agents`, `orchestrator`. |
 
 ## Quick start
 
@@ -59,6 +61,50 @@ what it writes, with you approving each execution — not an autonomous lab.
 python video_demo.py decode myclip.mp4            # decode -> GPU torch tensors
 python video_demo.py transcode myclip.mp4 out.h264
 ```
+
+## The Local AI Team (`local_ai/`)
+
+`agent_engine.py` is one coding agent. `local_ai/` is the **six-agent team** from
+[`../GOALS.md`](../GOALS.md), running fully local on the same Ollama daemon — no
+cloud, no API keys — with shared memory and an orchestrator that routes work.
+
+| Agent | Job | Tools |
+|-------|-----|-------|
+| `research`  | Finds & collects information | web fetch, files |
+| `content`   | Writes, edits, creates | files |
+| `analytics` | Analyzes data, finds insights | run python, files |
+| `outreach`  | Drafts outreach (human sends) | files |
+| `automation`| Builds & tests local workflows | run python, files, gpu telemetry |
+| `support`   | Answers questions, solves problems | files, web fetch |
+
+Every agent also gets `remember` / `recall` over a shared local memory.
+
+**Systems underneath:**
+
+- **Memory** (`memory.py`) — one SQLite file holds *episodic* (event log) and
+  *semantic* (recall-by-meaning) memory. Semantic search uses local embeddings
+  (`ollama pull nomic-embed-text`) and degrades to keyword search if unavailable.
+- **Tools** (`tools.py`) — sandboxed to a workspace dir, same confirm-before-exec
+  posture as `agent_engine.py` (no shell, timeouts, path-traversal rejected).
+- **Orchestration** (`orchestrator.py`) — keyword router with an LLM tie-break,
+  plus pipelines that pass one agent's output as the next's context, and
+  error handling that records failures instead of crashing a run.
+
+```bash
+ollama pull qwen2.5-coder:32b        # the team's default model
+ollama pull nomic-embed-text         # semantic memory (optional but recommended)
+
+python team.py list                          # show the team
+python team.py route "summarize Q2 metrics"  # auto-pick the best agent
+python team.py analytics "load data.csv and report the top 3 trends"
+python team.py chat                          # interactive, memory persists
+python team.py pipeline                      # demo: research -> content
+```
+
+Force an agent in chat with a prefix: `content: write a launch tweet`. Memory
+lives in `agent_memory.sqlite` (override with `LOCAL_AI_MEMORY`) and persists
+across runs. Same safety switch applies: agents that execute code confirm each
+run unless `AGENT_AUTO_APPROVE=1`.
 
 ## Why the original one-liner script failed
 

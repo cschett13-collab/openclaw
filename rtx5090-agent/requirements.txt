@@ -27,3 +27,10 @@ safetensors>=0.4.5
 
 # --- Quality-of-life ---
 rich>=13.9.0                     # readable agent console output
+
+# --- Local AI Team (local_ai/) ---
+# The multi-agent team reuses the deps above (langchain + langchain-ollama +
+# ollama + rich). Semantic memory uses local embeddings via the Ollama client;
+# pull the embedding model once with:  ollama pull nomic-embed-text
+# (override with OPENCLAW_EMBED_MODEL). No extra pip packages required — memory
+# and routing are stdlib-only and degrade to keyword search without embeddings.
