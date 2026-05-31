@@ -5,9 +5,18 @@ Run directly:  python test_creative_engine.py
 """
 
 import json
+import os
 import tempfile
 from pathlib import Path
 
+from config import (
+    DiskSpaceError,
+    GHLConfig,
+    _backoff_delay,
+    _first_existing,
+    disk_sentinel,
+    validate_environment,
+)
 from daily_cron import NICHES, pick_niche, verify_output
 from ghl_publisher import build_caption, build_post_payload
 
@@ -57,6 +66,43 @@ def main() -> int:
         empty = Path(d) / "empty.png"
         empty.write_bytes(b"")
         check("fail on empty file", verify_output({"ok": True, "thumbnail": str(empty)}) is False)
+
+    print("config: GHL headers")
+    os.environ["GHL_PRIVATE_TOKEN"] = "tok_123"
+    hdrs = GHLConfig().headers()
+    check("bearer auth", hdrs["Authorization"] == "Bearer tok_123")
+    check("api version header", hdrs["Version"] == "2021-07-28")
+    check("json content-type", hdrs["Content-Type"] == "application/json")
+    check("multipart omits content-type", "Content-Type" not in GHLConfig().headers(json_body=False))
+
+    print("config: disk sentinel")
+    with tempfile.TemporaryDirectory() as d:
+        free = disk_sentinel(d, min_free_mb=0)
+        check("returns free MB", isinstance(free, int) and free >= 0)
+        raised = False
+        try:
+            disk_sentinel(d, min_free_mb=10**12)  # 1 PB floor -> must trip
+        except DiskSpaceError:
+            raised = True
+        check("raises DiskSpaceError below threshold", raised)
+        deep = Path(d) / "a" / "b" / "c"
+        check("first_existing ascends to real dir", _first_existing(deep) == Path(d).resolve())
+
+    print("config: backoff")
+    check("grows with attempt", _backoff_delay(3, 1.0, 100.0) > _backoff_delay(1, 1.0, 100.0))
+    check("clamped to max", _backoff_delay(20, 1.0, 5.0) <= 5.0)
+
+    print("config: validate_environment")
+    os.environ["OLLAMA_BASE_URL"] = "http://127.0.0.1:11434"
+    check("valid ollama url ok", validate_environment()["OLLAMA_BASE_URL"].startswith("http"))
+    os.environ["OLLAMA_BASE_URL"] = "not-a-url"
+    bad = False
+    try:
+        validate_environment()
+    except Exception:
+        bad = True
+    check("rejects bad ollama url", bad)
+    os.environ["OLLAMA_BASE_URL"] = "http://127.0.0.1:11434"
 
     print("\nAll tests passed.")
     return 0

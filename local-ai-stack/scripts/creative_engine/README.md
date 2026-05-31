@@ -45,7 +45,13 @@ export IMAGE_BACKEND=a1111            # or: comfyui
 export A1111_BASE_URL=http://127.0.0.1:7860
 export COMFYUI_BASE_URL=http://127.0.0.1:8188
 export COMFYUI_WORKFLOW=/path/to/workflow_api.json   # only for comfyui backend
-export CREATIVE_OUTPUT_ROOT=runs
+
+# Storage & hardware thresholds (config.py)
+export CREATIVE_ASSET_ROOT=/volume1/FVCE_Pipeline/creative_assets  # raw/ rendered/ temp_frames/
+export MIN_FREE_MB=2048               # disk sentinel floor
+export OLLAMA_TIMEOUT=120             # seconds
+export RENDER_TIMEOUT=600             # SD/ComfyUI render ceiling
+export GHL_TIMEOUT=120
 
 # Publishing (GHL v2)
 export GHL_PRIVATE_TOKEN=...          # never commit this

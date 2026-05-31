@@ -32,7 +32,14 @@ import subprocess
 import time
 from pathlib import Path
 
-from config import GenerationConfig, ensure_dir, ensure_disk_space, get_logger, make_session
+from config import (
+    GenerationConfig,
+    ensure_dir,
+    ensure_disk_space,
+    get_logger,
+    make_session,
+    request_with_retry,
+)
 
 log = get_logger("local_generator")
 
@@ -74,10 +81,12 @@ def formulate_concept(cfg: GenerationConfig, *, niche: str, deficits: dict | Non
         "stream": False,
         "options": {"temperature": 0.9},
     }
-    resp = session.post(
+    resp = request_with_retry(
+        session,
+        "POST",
         f"{cfg.ollama_base_url.rstrip('/')}/api/generate",
         json=payload,
-        timeout=session.request_timeout,  # type: ignore[attr-defined]
+        timeout=cfg.timeouts.ollama,
     )
     resp.raise_for_status()
     raw = resp.json().get("response", "").strip()
@@ -105,10 +114,12 @@ def _render_a1111(cfg: GenerationConfig, prompt: str, out_path: Path) -> Path:
         "cfg_scale": 6.5,
         "sampler_name": "DPM++ 2M Karras",
     }
-    resp = session.post(
+    resp = request_with_retry(
+        session,
+        "POST",
         f"{cfg.a1111_base_url.rstrip('/')}/sdapi/v1/txt2img",
         json=payload,
-        timeout=session.request_timeout,  # type: ignore[attr-defined]
+        timeout=cfg.timeouts.render,
     )
     resp.raise_for_status()
     images = resp.json().get("images") or []
@@ -137,8 +148,8 @@ def _render_comfyui(cfg: GenerationConfig, prompt: str, out_path: Path) -> Path:
 
     session = make_session()
     base = cfg.comfyui_base_url.rstrip("/")
-    queued = session.post(f"{base}/prompt", json={"prompt": workflow},
-                          timeout=session.request_timeout)  # type: ignore[attr-defined]
+    queued = request_with_retry(session, "POST", f"{base}/prompt",
+                                json={"prompt": workflow}, timeout=cfg.timeouts.render)
     queued.raise_for_status()
     prompt_id = queued.json()["prompt_id"]
 

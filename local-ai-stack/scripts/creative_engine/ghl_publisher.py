@@ -29,7 +29,7 @@ import mimetypes
 from dataclasses import dataclass
 from pathlib import Path
 
-from config import GHLConfig, get_logger, make_session
+from config import TIMEOUTS, GHLConfig, get_logger, make_session, request_with_retry
 
 log = get_logger("ghl_publisher")
 
@@ -39,14 +39,10 @@ class GHLClient:
     cfg: GHLConfig
 
     def __post_init__(self) -> None:
-        self.session = make_session()
-        self.session.headers.update(
-            {
-                "Authorization": f"Bearer {self.cfg.token}",
-                "Version": self.cfg.api_version,
-                "Accept": "application/json",
-            }
-        )
+        self.session = make_session(timeout=TIMEOUTS.ghl)
+        # No Content-Type here: multipart upload sets its own; create_post's
+        # json= adds application/json automatically.
+        self.session.headers.update(self.cfg.headers(json_body=False))
 
     def _url(self, path: str) -> str:
         return f"{self.cfg.base_url.rstrip('/')}{path}"
@@ -54,15 +50,18 @@ class GHLClient:
     def upload_media(self, file_path: Path) -> str:
         """Upload a local file to the GHL media library; return its hosted URL."""
         mime = mimetypes.guess_type(file_path.name)[0] or "application/octet-stream"
-        with file_path.open("rb") as fh:
-            files = {"file": (file_path.name, fh, mime)}
-            data = {"locationId": self.cfg.location_id}
-            resp = self.session.post(
-                self._url("/medias/upload-file"),
-                files=files,
-                data=data,
-                timeout=self.session.request_timeout,  # type: ignore[attr-defined]
-            )
+        # Read bytes up front so a retried upload re-sends the full payload
+        # (a file handle would be exhausted after the first failed attempt).
+        files = {"file": (file_path.name, file_path.read_bytes(), mime)}
+        data = {"locationId": self.cfg.location_id}
+        resp = request_with_retry(
+            self.session,
+            "POST",
+            self._url("/medias/upload-file"),
+            files=files,
+            data=data,
+            timeout=TIMEOUTS.ghl,
+        )
         resp.raise_for_status()
         body = resp.json()
         # GHL has returned the hosted location under a few keys across versions.
@@ -88,10 +87,12 @@ class GHLClient:
             media_type=media_type,
             schedule_iso=schedule_iso,
         )
-        resp = self.session.post(
+        resp = request_with_retry(
+            self.session,
+            "POST",
             self._url(f"/social-media-posting/{self.cfg.location_id}/posts"),
             json=payload,
-            timeout=self.session.request_timeout,  # type: ignore[attr-defined]
+            timeout=TIMEOUTS.ghl,
         )
         if resp.status_code >= 400:
             raise RuntimeError(f"GHL post failed ({resp.status_code}): {resp.text}")
