@@ -16,6 +16,7 @@ can write, compile, and run CUDA/Python on your machine — no cloud, no API key
 | `run_everything.sh` | Gated entrypoint: syncs deps → runs the smoke test → starts the agent **only if it passes**. |
 | `verify_gpu.py`     | Standalone smoke test: torch GPU op + `nvcc -arch=sm_120` compile/run + optional PyNvVideoCodec import. |
 | `video_demo.py`     | GPU video decode/encode (NVDEC/NVENC) via PyNvVideoCodec, zero-copy to PyTorch. |
+| `av1_nvenc_service.py` | AV1 encode on NVENC with measured throughput (fps, Mbps) + before/peak/after encoder telemetry. |
 
 ## Quick start
 
