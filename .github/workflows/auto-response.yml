@@ -19,6 +19,9 @@ permissions: {}
 
 jobs:
   auto-response:
+    # Fork-guard: maintainer automation needs the org GitHub App secret, which
+    # forks don't have. Skip on forks instead of failing.
+    if: ${{ github.repository == 'openclaw/openclaw' }}
     permissions:
       contents: read
       issues: write
