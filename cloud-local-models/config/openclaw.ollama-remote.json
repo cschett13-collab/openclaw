@@ -1,0 +1,19 @@
+{
+  "models": {
+    "providers": {
+      "ollama-remote": {
+        "baseUrl": "http://gpu-box.tailnet-name.ts.net:11434",
+        "apiKey": "ollama-local",
+        "api": "ollama",
+        "models": [
+          { "id": "ollama-remote/qwen2.5-coder:32b", "name": "Qwen2.5 Coder 32B (local GPU)" }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "ollama-remote/qwen2.5-coder:32b" }
+    }
+  }
+}
