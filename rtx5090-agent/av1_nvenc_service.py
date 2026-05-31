@@ -46,7 +46,10 @@ def gpu_snapshot() -> dict[str, str]:
         return {}
     if r.returncode != 0:
         return {}
-    g, e, m, t = (v.strip() for v in r.stdout.strip().split(","))
+    parts = [v.strip() for v in r.stdout.strip().split(",")]
+    if len(parts) != 4:  # unexpected nvidia-smi output; don't crash the encode
+        return {}
+    g, e, m, t = parts
     return {"gpu_util_%": g, "enc_util_%": e, "mem_used_MiB": m, "temp_C": t}
 
 
@@ -90,9 +93,11 @@ def synthetic_nv12_frames(n: int, w: int, h: int):
 
 
 def decoded_frames(path: str):
-    """Yield frames decoded from `path` (NVDEC) for re-encode."""
+    """Yield frames decoded from `path` on the GPU (NVDEC) for re-encode.
+    use_device_memory=True keeps frames in VRAM so the encoder consumes them
+    without a host round-trip (true NVDEC->NVENC transcode)."""
     import PyNvVideoCodec as nvc
-    dec = nvc.SimpleDecoder(path, gpu_id=0, use_device_memory=False)
+    dec = nvc.SimpleDecoder(path, gpu_id=0, use_device_memory=True)
     for i in range(len(dec)):
         yield dec[i]
 
@@ -109,14 +114,16 @@ def run(args: argparse.Namespace) -> int:
     if args.input:
         frames = decoded_frames(args.input)
         total = "?"
-        # probe size from first decoded frame
+        # Probe dimensions from the first GPU-decoded frame. Keep this on the
+        # GPU (use_device_memory=True) so it matches decoded_frames() and the
+        # encoder's GPU input buffers below — mismatching CPU/GPU here was a bug.
         import PyNvVideoCodec as _nvc
-        probe = _nvc.SimpleDecoder(args.input, gpu_id=0, use_device_memory=False)
+        probe = _nvc.SimpleDecoder(args.input, gpu_id=0, use_device_memory=True)
         first = probe[0]
         import torch
         t = torch.from_dlpack(first)
         h, w = int(t.shape[-2]), int(t.shape[-1])
-        from_cpu = False
+        from_cpu = False  # frames are GPU-resident -> encoder reads device buffers
     else:
         w, h, n = args.width, args.height, args.frames
         frames = synthetic_nv12_frames(n, w, h)
