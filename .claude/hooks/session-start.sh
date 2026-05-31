@@ -12,6 +12,13 @@ fi
 
 cd "${CLAUDE_PROJECT_DIR:-.}"
 
+# Run asynchronously: the session starts immediately while this install
+# completes in the background. This JSON must be the first thing emitted on
+# stdout. Trade-off vs synchronous: faster startup, but on a cold container the
+# agent can briefly outrun the install (tests/linters may fail until it
+# finishes, typically a few seconds in).
+echo '{"async": true, "asyncTimeout": 600000}'
+
 # Ensure the repo-pinned pnpm (packageManager field) is available.
 corepack enable >/dev/null 2>&1 || true
 
