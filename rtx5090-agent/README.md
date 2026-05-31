@@ -11,7 +11,8 @@ can write, compile, and run CUDA/Python on your machine — no cloud, no API key
 | `setup_rtx5090.sh`  | Linux / WSL2 provisioner: CUDA Toolkit 12.8, cu128 PyTorch, Ollama, model pull, GPU smoke test. |
 | `setup_rtx5090.ps1` | Windows host prep: driver check + WSL2 (then hand off to the `.sh`). |
 | `requirements.txt`  | Modern LangChain + GPU libs (torch installed separately from cu128). |
-| `agent_engine.py`   | The agent: local Ollama model + **real, sandboxed** compile/run tools. |
+| `agent_engine.py`   | The agent (**modern** lane): `create_agent` + CUDA/`nvcc` and Python tools, sandboxed. |
+| `agent_engine_classic.py` | Same agent, **classic** lane: `create_tool_calling_agent` + `AgentExecutor`. |
 | `verify_gpu.py`     | Standalone smoke test: torch GPU op + `nvcc -arch=sm_120` compile/run + optional PyNvVideoCodec import. |
 | `video_demo.py`     | GPU video decode/encode (NVDEC/NVENC) via PyNvVideoCodec, zero-copy to PyTorch. |
 
@@ -61,6 +62,21 @@ These are real, breaking issues that were corrected here:
 5. **Driver install assumptions** — the GPU driver is a host/reboot concern
    (and on WSL2 the Linux side must NOT install a driver). The script *verifies*
    the driver instead of blindly installing one.
+
+## Two agent lanes (don't cross them)
+
+Current LangChain offers two valid ways to build a tool-calling agent:
+
+| | `agent_engine.py` (modern) | `agent_engine_classic.py` (classic) |
+|---|---|---|
+| factory | `create_agent(llm, tools, prompt=<system str>)` | `create_tool_calling_agent(llm, tools, prompt)` |
+| executor | none — returns a ready graph | wrap in `AgentExecutor(...)` |
+| prompt | system string | `ChatPromptTemplate` + `MessagesPlaceholder("agent_scratchpad")` |
+| invoke | `{"messages": [...]}` | `{"input": ...}` |
+
+**Common mistake:** `create_agent(llm, tools, prompt, "openai-tools")` then wrapping
+in `AgentExecutor`. That fails — `create_agent` takes no agent-type arg and already
+returns the runnable. Pick one lane; both are equivalent at runtime.
 
 ## ⚠️ Safety — read before `AGENT_AUTO_APPROVE=1`
 
