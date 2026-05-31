@@ -1,0 +1,107 @@
+// Hybrid model config for the UGREEN-NAS hub.
+// ---------------------------------------------------------------------------
+// Three tiers, one brain:
+//   • "Quick Local (NAS)"  — small model on the NAS. Private, offline, instant-ish. CPU only.
+//   • "Big Local (PC)"     — 32 GB-VRAM PC, woken on demand via Wake-on-LAN. Strong + private.
+//   • "Sonnet / Opus"      — hosted Claude (your Claude Max / Anthropic). Top quality, needs internet.
+//
+// This is a REFERENCE. JSON5 comments are not valid in the real openclaw.json.
+// Apply it one of these ways (see README.md Part D):
+//   • run `openclaw onboard` to add each provider interactively, OR
+//   • merge the blocks below into ~/.openclaw/openclaw.json (strip comments), OR
+//   • use `openclaw config set <path> '<json>' --strict-json --merge`
+//
+// Replace every <PLACEHOLDER> (PC IP + MAC) and the example model ids with yours.
+
+{
+  agents: {
+    defaults: {
+      model: {
+        // Default brain. Swap this to "ollama/llama3.2:3b" for local-first, or to
+        // "ollama-pc/qwen2.5:32b" to default to the PC. You can also switch per
+        // conversation from the app's model picker using the aliases below.
+        primary: "anthropic/claude-sonnet-4-6",
+        // Tried in order if the primary is unavailable (e.g. internet down ->
+        // PC; PC won't wake -> small NAS model).
+        fallbacks: ["ollama-pc/qwen2.5:32b", "ollama/llama3.2:3b"],
+      },
+      models: {
+        "anthropic/claude-sonnet-4-6": { alias: "Sonnet" },
+        "anthropic/claude-opus-4-6": { alias: "Opus" },
+        "ollama-pc/qwen2.5:32b": { alias: "Big Local (PC)" },
+        "ollama/llama3.2:3b": { alias: "Quick Local (NAS)" },
+      },
+    },
+  },
+
+  models: {
+    // merge => keep hosted Claude available alongside the local providers below.
+    mode: "merge",
+    providers: {
+      // --- Small model on the NAS (Ollama container in docker-compose) --------
+      // Native Ollama API => baseUrl has NO /v1 (the /v1 path breaks tool calls).
+      ollama: {
+        baseUrl: "http://127.0.0.1:11434",
+        apiKey: "ollama-local",
+        api: "ollama",
+        timeoutSeconds: 300,
+        models: [
+          {
+            id: "llama3.2:3b",
+            name: "Llama 3.2 3B (NAS)",
+            reasoning: false,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 131072,
+            maxTokens: 4096,
+          },
+        ],
+      },
+
+      // --- Big model on the PC, woken on demand via Wake-on-LAN ---------------
+      // OpenClaw probes healthUrl; if the PC is asleep, it runs the localService
+      // `command` (our wake-pc.mjs), which sprays magic packets until the PC's
+      // Ollama answers, then OpenClaw sends the request. On idle, OpenClaw stops
+      // the helper; the PC sleeps itself via its own OS idle timer.
+      "ollama-pc": {
+        baseUrl: "http://<PC-LAN-IP>:11434",
+        apiKey: "ollama-local",
+        api: "ollama",
+        // Cold wake + load can be slow; give it room.
+        timeoutSeconds: 600,
+        localService: {
+          // Absolute path — no shell lookup. `/usr/local/bin/node` is correct
+          // for the official node image; verify with:
+          //   docker compose -f docker-compose.ugreen.yml exec openclaw-gateway which node
+          command: "/usr/local/bin/node",
+          args: ["/home/node/.openclaw/wake-pc.mjs"],
+          env: {
+            WAKE_PC_MAC: "<PC-MAC e.g. AA:BB:CC:DD:EE:FF>",
+            // Use your subnet broadcast (e.g. 192.168.1.255) if 255.255.255.255 is filtered.
+            WAKE_PC_BROADCAST: "255.255.255.255",
+            WAKE_PC_PORT: "9",
+            WAKE_PC_HEALTH_URL: "http://<PC-LAN-IP>:11434/api/tags",
+            WAKE_PC_RESEND_MS: "5000",
+            WAKE_PC_GIVEUP_MS: "180000",
+          },
+          // Ollama's native readiness/list endpoint.
+          healthUrl: "http://<PC-LAN-IP>:11434/api/tags",
+          readyTimeoutMs: 180000,
+          // Stop the wake helper after 10 min idle. The PC sleeps on its own.
+          idleStopMs: 600000,
+        },
+        models: [
+          {
+            id: "qwen2.5:32b",
+            name: "Qwen2.5 32B (PC)",
+            reasoning: false,
+            input: ["text"],
+            cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+            contextWindow: 131072,
+            maxTokens: 8192,
+          },
+        ],
+      },
+    },
+  },
+}

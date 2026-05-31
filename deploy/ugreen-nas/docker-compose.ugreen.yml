@@ -1,0 +1,95 @@
+# OpenClaw on a UGREEN NAS (UGOS Pro + Docker)
+# -------------------------------------------------------------------
+# This is a NAS-tailored compose file. It runs the always-on OpenClaw "brain"
+# (the Gateway) plus an OPTIONAL small local model (Ollama) on the NAS itself.
+# All conversation history, memory, and config live in ./data on the NAS, so
+# every device that connects sees the same state and you pick up where you left off.
+#
+# Quick start (run from this folder on the NAS):
+#   1. cp .env.example .env   and edit it
+#   2. mkdir -p data/openclaw data/workspace data/auth-secrets data/ollama
+#   3. sudo chown -R 1000:1000 data/openclaw data/workspace data/auth-secrets
+#   4. docker compose -f docker-compose.ugreen.yml up -d
+#   5. Add your model auth + channels with the CLI (see README.md, Part D/E)
+#
+# WHY host networking: it lets the Gateway (a) be reachable on your LAN at
+# http://<NAS-IP>:18789, (b) advertise itself to the iOS/Android/desktop apps via
+# Bonjour/mDNS, and (c) send Wake-on-LAN broadcasts to your PC. On a trusted home
+# LAN this is the right call for a personal hub. If you must use bridge mode
+# instead, see README.md "Networking & Wake-on-LAN" for the tradeoffs.
+
+services:
+  openclaw-gateway:
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
+    container_name: openclaw-gateway
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      HOME: /home/node
+      OPENCLAW_HOME: /home/node
+      TERM: xterm-256color
+      # Pin container-side state paths so host .env values can't leak in.
+      OPENCLAW_STATE_DIR: /home/node/.openclaw
+      OPENCLAW_CONFIG_PATH: /home/node/.openclaw/openclaw.json
+      OPENCLAW_CONFIG_DIR: /home/node/.openclaw
+      OPENCLAW_WORKSPACE_DIR: /home/node/.openclaw/workspace
+      OPENCLAW_GATEWAY_TOKEN: ${OPENCLAW_GATEWAY_TOKEN:-}
+      # Allow LAN discovery on host networking (mDNS works here).
+      OPENCLAW_DISABLE_BONJOUR: ${OPENCLAW_DISABLE_BONJOUR:-0}
+      # Hosted Claude (Claude Max / Anthropic) auth is added via onboarding;
+      # these pass through if you use session-key auth instead of OAuth.
+      CLAUDE_AI_SESSION_KEY: ${CLAUDE_AI_SESSION_KEY:-}
+      CLAUDE_WEB_SESSION_KEY: ${CLAUDE_WEB_SESSION_KEY:-}
+      CLAUDE_WEB_COOKIE: ${CLAUDE_WEB_COOKIE:-}
+      TZ: ${OPENCLAW_TZ:-UTC}
+    volumes:
+      - ./data/openclaw:/home/node/.openclaw
+      - ./data/workspace:/home/node/.openclaw/workspace
+      - ./data/auth-secrets:/home/node/.config/openclaw
+    cap_drop:
+      - NET_ADMIN
+    security_opt:
+      - no-new-privileges:true
+    init: true
+    restart: unless-stopped
+    # Bind to LAN so phones/desktops on your network can reach the NAS hub.
+    command:
+      ["node", "dist/index.js", "gateway", "--bind", "lan", "--port", "18789"]
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:18789/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ----------------------------------------------------------------------------
+  # OPTIONAL: small local model on the NAS itself (CPU inference).
+  # Enable with:  docker compose -f docker-compose.ugreen.yml --profile local-nas up -d
+  # Realistic expectation: a mid-range NAS has no GPU, so keep this to a small
+  # model (e.g. llama3.2:3b / qwen2.5:3b) for quick, private, offline replies.
+  # For real horsepower, route to your PC (Part C) or hosted Claude.
+  # ----------------------------------------------------------------------------
+  ollama:
+    image: ollama/ollama:latest
+    container_name: openclaw-ollama
+    profiles: ["local-nas"]
+    restart: unless-stopped
+    # Publish to host so the host-networked gateway reaches it at 127.0.0.1:11434.
+    ports:
+      - "11434:11434"
+    volumes:
+      - ./data/ollama:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
