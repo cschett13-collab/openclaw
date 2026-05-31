@@ -1,0 +1,19 @@
+{
+  "models": {
+    "providers": {
+      "ollama": {
+        "baseUrl": "http://127.0.0.1:11434",
+        "apiKey": "ollama-local",
+        "api": "ollama",
+        "models": [
+          { "id": "ollama/qwen2.5:0.5b", "name": "Qwen2.5 0.5B (CPU sandbox)" }
+        ]
+      }
+    }
+  },
+  "agents": {
+    "defaults": {
+      "model": { "primary": "ollama/qwen2.5:0.5b" }
+    }
+  }
+}

@@ -1,0 +1,41 @@
+# Local model backends for the "cloud + local models" CI/demo path (README path B2).
+#
+#   docker compose -f cloud-local-models/docker-compose.yml up -d ollama
+#   docker compose -f cloud-local-models/docker-compose.yml exec ollama ollama pull qwen2.5:0.5b
+#
+# Then point OpenClaw at http://127.0.0.1:11434 with
+# cloud-local-models/config/openclaw.ollama-local.json
+services:
+  # CPU-friendly Ollama. Works on the ephemeral sandbox; no GPU required.
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  # OpenAI-compatible serving via vLLM. Requires a GPU runtime — uncomment and
+  # provide a model + the NVIDIA container toolkit. Use with
+  # cloud-local-models/config/openclaw.openai-compat.json (baseUrl :8000/v1).
+  #
+  # vllm:
+  #   image: vllm/vllm-openai:latest
+  #   ports:
+  #     - "8000:8000"
+  #   command: ["--model", "Qwen/Qwen2.5-0.5B-Instruct"]
+  #   deploy:
+  #     resources:
+  #       reservations:
+  #         devices:
+  #           - driver: nvidia
+  #             count: all
+  #             capabilities: [gpu]
+
+volumes:
+  ollama-models:
