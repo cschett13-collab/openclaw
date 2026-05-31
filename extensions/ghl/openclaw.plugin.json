@@ -1,0 +1,57 @@
+{
+  "id": "ghl",
+  "activation": {
+    "onStartup": false
+  },
+  "skills": ["./skills"],
+  "providerAuthEnvVars": {
+    "ghl": ["GHL_API_KEY"]
+  },
+  "uiHints": {
+    "crm.apiKey": {
+      "label": "GoHighLevel Private Integration Token",
+      "help": "LeadConnector Private Integration Token used as a Bearer credential (fallback: GHL_API_KEY env var).",
+      "sensitive": true,
+      "placeholder": "pit-..."
+    },
+    "crm.locationId": {
+      "label": "GoHighLevel Location ID",
+      "help": "Sub-account (location) id. Required for contact search (fallback: GHL_LOCATION_ID env var)."
+    },
+    "crm.apiVersion": {
+      "label": "GoHighLevel API Version",
+      "help": "LeadConnector versioning header. Defaults to 2021-07-28 (fallback: GHL_API_VERSION env var)."
+    },
+    "crm.baseUrl": {
+      "label": "GoHighLevel Base URL",
+      "help": "LeadConnector API base URL override (default https://services.leadconnectorhq.com)."
+    }
+  },
+  "contracts": {
+    "tools": ["ghl_find_contact", "ghl_get_contact", "ghl_add_contact_note"]
+  },
+  "configSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "crm": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "apiKey": {
+            "type": ["string", "object"]
+          },
+          "locationId": {
+            "type": "string"
+          },
+          "apiVersion": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
