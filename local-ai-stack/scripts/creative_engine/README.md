@@ -62,6 +62,18 @@ export GHL_ACCOUNT_IDS=acc_1,acc_2    # connected social accounts
 ## Run
 
 ```bash
+# One fail-fast command: validate the whole environment (deps, env, disk,
+# Ollama, image backend, unit tests) BEFORE touching the GPU, then run the
+# pipeline. Bails on the first broken gate. DRY_RUN=1 (default) skips publishing.
+./run_everything.sh
+DRY_RUN=0 ./run_everything.sh        # validate, then publish for real
+
+# Benchmark real throughput — grounds performance in numbers, not guesses
+python benchmark.py                  # tokens/sec + seconds/image + images/min
+python benchmark.py --runs 5 --json
+
+# --- or run individual stages directly ---
+
 # Generate assets only
 python local_generator.py --niche "B2B tech gaps"
 
