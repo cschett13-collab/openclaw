@@ -13,6 +13,7 @@ can write, compile, and run CUDA/Python on your machine — no cloud, no API key
 | `requirements.txt`  | Modern LangChain + GPU libs (torch installed separately from cu128). |
 | `agent_engine.py`   | The agent (**modern** lane): `create_agent` + CUDA/`nvcc` and Python tools, sandboxed. |
 | `agent_engine_classic.py` | Same agent, **classic** lane: `create_tool_calling_agent` + `AgentExecutor`. |
+| `run_everything.sh` | Gated entrypoint: syncs deps → runs the smoke test → starts the agent **only if it passes**. |
 | `verify_gpu.py`     | Standalone smoke test: torch GPU op + `nvcc -arch=sm_120` compile/run + optional PyNvVideoCodec import. |
 | `video_demo.py`     | GPU video decode/encode (NVDEC/NVENC) via PyNvVideoCodec, zero-copy to PyTorch. |
 
@@ -35,6 +36,23 @@ WSL2 is the supported path.
 ```bash
 python verify_gpu.py        # real torch op + nvcc sm_120 compile/run; exit 0 = good
 ```
+
+**Gated all-in-one (smoke test must pass before the agent starts):**
+```bash
+./run_everything.sh                    # check, then interactive agent
+./run_everything.sh "your first task"  # check, then run that task
+./run_everything.sh --check-only       # just the smoke test
+AGENT_LANE=classic ./run_everything.sh # use the classic-lane agent
+```
+
+### Honest scope
+
+The agent has a `gpu_telemetry` tool (`nvidia-smi`) and is instructed to report
+performance **only with before/after measurements**, never from intuition. It
+still does **not** autonomously detect throughput ceilings or invent kernel
+optimizations — a local 32B model frequently writes CUDA that won't compile or
+is slower than baseline. Treat it as a capable assistant that runs and measures
+what it writes, with you approving each execution — not an autonomous lab.
 
 **GPU video (NVDEC/NVENC):**
 ```bash

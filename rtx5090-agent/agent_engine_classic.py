@@ -91,15 +91,43 @@ def execute_code(code: str) -> str:
     return f"SUCCESS:\n{(res.stdout or '').strip()}"
 
 
+@tool
+def gpu_telemetry() -> str:
+    """Live RTX 5090 telemetry via nvidia-smi: GPU/mem/encoder/decoder
+    utilization, memory used/total (MiB), temperature. Call before AND after a
+    change to ground performance claims in measured numbers, not guesses."""
+    query = ("utilization.gpu,utilization.memory,memory.used,memory.total,"
+             "utilization.encoder,utilization.decoder,temperature.gpu")
+    try:
+        r = subprocess.run(
+            ["nvidia-smi", f"--query-gpu={query}", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+    except FileNotFoundError:
+        return "ERROR: nvidia-smi not found (no driver visible)."
+    except subprocess.TimeoutExpired:
+        return "ERROR: nvidia-smi timed out."
+    if r.returncode != 0:
+        return f"ERROR: nvidia-smi exit {r.returncode}: {r.stderr.strip()}"
+    cols = ["gpu_util_%", "mem_util_%", "mem_used_MiB", "mem_total_MiB",
+            "enc_util_%", "dec_util_%", "temp_C"]
+    vals = [v.strip() for v in r.stdout.strip().split(",")]
+    return "\n".join(f"  {k}: {v}" for k, v in zip(cols, vals))
+
+
 def build_executor() -> AgentExecutor:
     llm = ChatOllama(model=MODEL, base_url=OLLAMA_HOST, temperature=0)
-    tools = [execute_code]
+    tools = [execute_code, gpu_telemetry]
     prompt = ChatPromptTemplate.from_messages([
         ("system",
-         "You are an autonomous engineer on a machine with an NVIDIA RTX 5090 "
-         "(Blackwell, sm_120, 32GB). Use execute_code to run code. For "
-         "high-volume video use PyNvVideoCodec for NVDEC/NVENC. If code fails, "
-         "do root-cause analysis on the error, fix the source, and re-run."),
+         "You are an engineer on a machine with an NVIDIA RTX 5090 (Blackwell, "
+         "sm_120, 32GB). Use execute_code to run code. For high-volume video use "
+         "PyNvVideoCodec for NVDEC/NVENC. If code fails, do root-cause analysis "
+         "on the error, fix the source, and re-run. PERFORMANCE RULES: never "
+         "claim 'faster'/'optimized' from intuition. Call gpu_telemetry before "
+         "and after a change and include explicit timings in the code you run; "
+         "report optimization results ONLY with before/after numbers, or state "
+         "you have no measurement."),
         ("human", "{input}"),
         MessagesPlaceholder(variable_name="agent_scratchpad"),
     ])

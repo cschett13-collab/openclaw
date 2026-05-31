@@ -130,7 +130,32 @@ def write_compile_run_cuda(filename: str, code: str, arch: str = "sm_120") -> st
     return f"COMPILE OK\n{compile_out}\n\n=== RUN ===\n{run_out}"
 
 
-TOOLS = [write_and_run_python, write_compile_run_cuda]
+@tool
+def gpu_telemetry() -> str:
+    """Return live RTX 5090 telemetry from nvidia-smi: GPU utilization %,
+    memory used/total (MiB), and encoder/decoder utilization %. Call this
+    BEFORE and AFTER a change to ground any performance claim in real numbers
+    rather than guessing."""
+    query = ("utilization.gpu,utilization.memory,memory.used,memory.total,"
+             "utilization.encoder,utilization.decoder,temperature.gpu")
+    try:
+        r = subprocess.run(
+            ["nvidia-smi", f"--query-gpu={query}", "--format=csv,noheader,nounits"],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+    except FileNotFoundError:
+        return "ERROR: nvidia-smi not found (no driver visible)."
+    except subprocess.TimeoutExpired:
+        return "ERROR: nvidia-smi timed out."
+    if r.returncode != 0:
+        return f"ERROR: nvidia-smi exit {r.returncode}: {r.stderr.strip()}"
+    cols = ["gpu_util_%", "mem_util_%", "mem_used_MiB", "mem_total_MiB",
+            "enc_util_%", "dec_util_%", "temp_C"]
+    vals = [v.strip() for v in r.stdout.strip().split(",")]
+    return "\n".join(f"  {k}: {v}" for k, v in zip(cols, vals))
+
+
+TOOLS = [write_and_run_python, write_compile_run_cuda, gpu_telemetry]
 
 SYSTEM_PROMPT = (
     "You are a CUDA and Python engineer working on a machine with an NVIDIA "
@@ -138,6 +163,11 @@ SYSTEM_PROMPT = (
     "When asked to build something, WRITE the code and USE your tools to run or "
     "compile it, then read the tool output and FIX errors iteratively until it "
     "works. For CUDA, target sm_120. Keep files inside the workspace. "
+    "PERFORMANCE RULES: never claim something is 'faster' or 'optimized' from "
+    "intuition. Measure it. Call gpu_telemetry before and after a change, and "
+    "include explicit timings (e.g. time a kernel over N iterations) in the code "
+    "you run. Report optimization results ONLY with before/after numbers from "
+    "tool output; if you have no measurement, say so. "
     "Report the final working result and where the file lives."
 )
 
