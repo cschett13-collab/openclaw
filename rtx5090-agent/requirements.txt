@@ -1,0 +1,29 @@
+# RTX 5090 (Blackwell, sm_120) local AI dev stack
+#
+# PyTorch is intentionally NOT pinned here — it must come from the cu128
+# index, which the setup script installs separately. Installing torch from
+# PyPI here would pull a CPU/sm_90 build that cannot target sm_120.
+
+# --- Agent framework (modern LangChain, post-deprecation API) ---
+langchain>=0.3.27
+langchain-ollama>=0.2.3          # ChatOllama lives here, NOT langchain_community
+langgraph>=0.3.0                 # backs langchain.agents.create_agent
+ollama>=0.4.0                    # python client for the local Ollama daemon
+
+# --- Inference / optimization (optional, used by the GPU smoke test) ---
+# TensorRT on pip is now just `tensorrt-cu12`. The old `nvidia-pyindex` +
+# `nvidia-tensorrt` combo is deprecated and unnecessary.
+tensorrt-cu12>=10.0.0 ; platform_system != "Windows"
+
+# --- GPU video encode/decode (NVDEC/NVENC) ---
+# Needs an NVIDIA GPU + driver; no CPU/macOS wheel. Used by video_demo.py.
+PyNvVideoCodec>=2.0.0 ; platform_system != "Darwin"
+
+# --- Image / video generation toolchain ---
+diffusers>=0.31.0
+transformers>=4.46.0
+accelerate>=1.1.0
+safetensors>=0.4.5
+
+# --- Quality-of-life ---
+rich>=13.9.0                     # readable agent console output
