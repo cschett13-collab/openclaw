@@ -290,6 +290,15 @@ sudo tailscale up --accept-routes
 | Can't reach `:3000` from phone | Tailscale not up on one side, or you used the LAN IP. Use the MagicDNS name and confirm `tailscale status` lists both devices online. |
 | Port 3000 already taken | Change the host side: `-p 8081:8080`. |
 
+## Next steps
+
+- **[`MEMORY.md`](./MEMORY.md)** — Phase 1: give the model continuous, private
+  memory via RAG (Open WebUI Memory + auto-extraction + ChromaDB), so it gets
+  smarter the more you use it without fine-tuning.
+- **[`PLAYBOOKS.md`](./PLAYBOOKS.md)** — Phase 2: proven ways to monetize the
+  stack as a margin-multiplier (audit lead engine, programmatic SEO, voice/SMS
+  agents).
+
 ## References
 
 - Open WebUI docs: https://docs.openwebui.com/
