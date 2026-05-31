@@ -39,8 +39,21 @@ fi
 log "Serving Open WebUI (port ${PORT}) over HTTPS on your tailnet…"
 tailscale serve --bg "${PORT}" || fail "tailscale serve failed (needs Tailscale v1.40+ and HTTPS enabled for your tailnet)."
 
-# 4) Resolve the MagicDNS name and build the phone URL.
-FQDN="$(tailscale status --json 2>/dev/null | grep -oE '"DNSName":[[:space:]]*"[^"]+"' | head -n1 | sed -E 's/.*"([^"]+)"/\1/; s/\.$//')"
+# 4) Resolve THIS machine's MagicDNS name (Self.DNSName — not a peer's) and
+#    build the phone URL.
+get_self_fqdn() {
+  local json
+  json="$(tailscale status --json 2>/dev/null)" || return 1
+  if command -v jq >/dev/null; then
+    jq -r '.Self.DNSName // empty' <<<"$json" | sed 's/\.$//'
+  elif command -v python3 >/dev/null; then
+    python3 -c 'import sys,json; d=json.load(sys.stdin); print((d.get("Self") or {}).get("DNSName","").rstrip("."))' <<<"$json"
+  else
+    # Last resort: requires Self to appear before any Peer in the JSON.
+    grep -oE '"DNSName":[[:space:]]*"[^"]+"' <<<"$json" | head -n1 | sed -E 's/.*"([^"]+)"/\1/; s/\.$//'
+  fi
+}
+FQDN="$(get_self_fqdn)"
 [ -n "${FQDN:-}" ] || fail "Could not resolve your tailnet hostname (tailscale status)."
 URL="https://${FQDN}"
 
