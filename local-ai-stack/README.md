@@ -174,6 +174,18 @@ sudo tailscale up
 Authenticate in the browser link it prints. Install the Tailscale app on your
 phone and sign in with the **same account** — they join the same private tailnet.
 
+### One-shot: get it onto your phone
+
+```bash
+./phone_access.sh
+```
+
+Brings Tailscale up, serves Open WebUI over HTTPS on your tailnet, and prints
+the URL to open on your phone — as a scannable **QR code** if `qrencode` is
+installed (`sudo apt install qrencode`). Then just open that URL in your phone
+browser with the Tailscale app connected. The manual steps below do the same
+thing by hand.
+
 Find your machine's tailnet address:
 
 ```bash
@@ -190,15 +202,9 @@ http://100.x.y.z:3000               # or the raw Tailscale IP
 
 ### Optional: HTTPS without certificates to manage
 
-Tailscale can terminate TLS for you and serve Open WebUI over `https` on your
-tailnet (handy because some mobile features prefer a secure context):
-
-```bash
-tailscale serve --bg 3000
-```
-
-This publishes `https://<machine-name>.<tailnet>.ts.net` to your devices only —
-still never exposed to the public internet. Undo with `tailscale serve --https=443 off`.
+`phone_access.sh` runs `tailscale serve --bg 3000` for you. This publishes
+`https://<machine-name>.<tailnet>.ts.net` to your devices only — still never
+exposed to the public internet. Undo with `tailscale serve --https=443 off`.
 
 > Do **not** use `tailscale funnel` unless you deliberately want this reachable
 > from the public internet. Funnel breaks the "private tunnel only" guarantee.
