@@ -1,0 +1,30 @@
+# Open WebUI pointed at a NATIVE Ollama running on the host (RTX 5090).
+#
+#   docker compose up -d
+#
+# Ollama is intentionally NOT run here — it lives on the host so it gets direct,
+# fully supported access to the NVIDIA driver/CUDA for the 5090. See README.md
+# (Step 2) for the `OLLAMA_HOST=0.0.0.0` systemd override that lets this
+# container reach it via host.docker.internal.
+
+services:
+  open-webui:
+    # Pin a digest/tag in production; `main` tracks the latest release.
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: open-webui
+    restart: unless-stopped
+    ports:
+      - "3000:8080"
+    extra_hosts:
+      # Lets the container resolve the host machine where native Ollama listens.
+      - "host.docker.internal:host-gateway"
+    environment:
+      - OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # First account created becomes admin; lock down signups after that:
+      # - ENABLE_SIGNUP=false
+    volumes:
+      # Persists accounts, chats, settings, and uploaded RAG documents.
+      - open-webui:/app/backend/data
+
+volumes:
+  open-webui:
