@@ -37,11 +37,14 @@ jobs:
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY }}
       - uses: actions/create-github-app-token@v3
         id: app-token-fallback
+        continue-on-error: true
         if: steps.app-token.outcome == 'failure'
         with:
           app-id: "2971289"
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - name: Run Barnacle auto-response
+        # No App token (e.g. forks without GH_APP_PRIVATE_KEY* secrets): skip instead of failing the job.
+        if: steps.app-token.outputs.token || steps.app-token-fallback.outputs.token
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
