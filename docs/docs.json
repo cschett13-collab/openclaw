@@ -1205,6 +1205,7 @@
                 "pages": [
                   "plugins/codex-harness",
                   "plugins/codex-computer-use",
+                  "plugins/ghl",
                   "plugins/google-meet",
                   "plugins/webhooks",
                   "plugins/admin-http-rpc",
