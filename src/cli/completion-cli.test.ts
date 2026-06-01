@@ -93,6 +93,22 @@ describe("completion-cli", () => {
     expect(script).toContain("$completions = @('status','restart','--force')");
   });
 
+  it("emits well-formed long flags (not '-v,') in bash completion", () => {
+    const script = getCompletionScript("bash", createCompletionProgram());
+
+    // "-v, --verbose" must not leak the comma-suffixed short token "-v,".
+    expect(script).not.toContain("-v,");
+    expect(script).toContain("--verbose");
+    expect(script).toContain("gateway");
+  });
+
+  it("emits well-formed long flags (not '-v,') in PowerShell root completion", () => {
+    const script = getCompletionScript("powershell", createCompletionProgram());
+
+    expect(script).not.toContain("'-v,'");
+    expect(script).toContain("@('gateway', '--verbose')");
+  });
+
   it("generates fish completions for root and nested command contexts", () => {
     const script = getCompletionScript("fish", createCompletionProgram());
 
