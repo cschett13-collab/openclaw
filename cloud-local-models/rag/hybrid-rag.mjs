@@ -17,7 +17,7 @@ import { createHash } from "node:crypto";
 //   TOP_K            default 4
 //   CRAG             set to 1 to grade retrieved chunks before answering
 //   CORPUS_DIR       default <this dir>/corpus
-import { readFileSync, readdirSync, writeFileSync, existsSync, statSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
