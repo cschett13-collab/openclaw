@@ -22,6 +22,7 @@
 #   ./openclaw_local_gateway.sh --foreground # configure + run in foreground (no service)
 #   ./openclaw_local_gateway.sh --setup-only # configure only; no service, no run
 #   ./openclaw_local_gateway.sh --status     # show gateway service + reachability
+#   ./openclaw_local_gateway.sh --phone      # print phone connect info (URL/token/pairing)
 #
 # Model choice (smartest long-term that actually works on 32GB VRAM):
 #   primary  = gpt-oss:20b        — strong agentic/tool-calling + reasoning, ~13GB.
@@ -61,9 +62,35 @@ oc()   { node "$REPO/openclaw.mjs" "$@"; }
 
 is_wsl() { grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; }
 
-# --- --status short-circuit ----------------------------------------------
+# Print everything needed to reach the assistant from a phone on the tailnet:
+# the tailnet URL, the auth token, and the native-app pairing steps. Talking to
+# this gateway means talking to the LOCAL Ollama model — nothing leaves the net.
+print_phone_info() {
+  local ip token
+  ip="$(tailscale ip -4 2>/dev/null | head -1 || true)"
+  token="$(oc config get gateway.auth.token 2>/dev/null | tr -d '[:space:]' || true)"
+  printf '\n\033[1;36m=== Connect your phone (same tailnet) ===\033[0m\n'
+  if [[ -n "$ip" ]]; then
+    printf '  Web Control UI : http://%s:%s/\n' "$ip" "$OPENCLAW_PORT"
+  else
+    printf '  Web Control UI : http://<this-host-tailnet-ip>:%s/   (run: tailscale ip -4)\n' "$OPENCLAW_PORT"
+  fi
+  printf '  Auth token     : %s\n' "${token:-<run: openclaw config get gateway.auth.token>}"
+  printf '  Native iOS app : point it at the URL above, then approve the device here:\n'
+  printf '      openclaw nodes pending      # see the phone request\n'
+  printf '      openclaw nodes approve <id> # approve it\n'
+  printf '      openclaw nodes status       # confirm paired + connected\n'
+  printf '  Chatting here talks to your LOCAL model (%s) — no cloud.\n\n' "$PRIMARY_MODEL"
+}
+
+# --- short-circuits -------------------------------------------------------
 if [[ "$MODE" == "--status" ]]; then
   oc gateway status || true
+  print_phone_info
+  exit 0
+fi
+if [[ "$MODE" == "--phone" ]]; then
+  print_phone_info
   exit 0
 fi
 
@@ -181,6 +208,7 @@ for _ in $(seq 1 20); do curl -fsS "http://127.0.0.1:$OPENCLAW_PORT/healthz" >/d
 if curl -fsS "http://127.0.0.1:$OPENCLAW_PORT/healthz" >/dev/null 2>&1; then
   log "Gateway is UP on http://127.0.0.1:$OPENCLAW_PORT/ (and your tailnet IP on bind=tailnet)."
   log "It will start automatically on next boot. Check anytime with: $0 --status"
+  print_phone_info
 else
   oc gateway status || true
   die "Gateway did not report healthy yet. Inspect: openclaw gateway status  and  journalctl --user -u openclaw-gateway -e"
