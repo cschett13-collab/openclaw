@@ -60,6 +60,15 @@ warn() { printf '\033[1;33m[warn]\033[0m %s\n' "$*" >&2; }
 die()  { printf '\033[1;31m[stop]\033[0m %s\n' "$*" >&2; exit 1; }
 oc()   { node "$REPO/openclaw.mjs" "$@"; }
 
+case "$MODE" in
+  install|--foreground|--setup-only|--status|--phone) ;;
+  -h|--help)
+    sed -n '1,45p' "$0"
+    exit 0
+    ;;
+  *) die "Unknown mode '$MODE'. Use --foreground, --setup-only, --status, --phone, or --help." ;;
+esac
+
 is_wsl() { grep -qiE 'microsoft|wsl' /proc/version 2>/dev/null; }
 
 # Print everything needed to reach the assistant from a phone on the tailnet:
