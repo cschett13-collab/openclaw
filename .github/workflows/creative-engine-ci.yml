@@ -1,0 +1,44 @@
+name: creative-engine-ci
+
+# Launch gate for the local-ai-stack automation: compiles every script and runs
+# the network-free unit tests. No GPU, no secrets, no live services required.
+on:
+  push:
+    branches: ["claude/local-ai-open-webui-kSzlY"]
+    paths:
+      - "local-ai-stack/**"
+      - ".github/workflows/creative-engine-ci.yml"
+  pull_request:
+    paths:
+      - "local-ai-stack/**"
+      - ".github/workflows/creative-engine-ci.yml"
+
+jobs:
+  creative-engine-tests:
+    name: creative-engine-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip requests "urllib3>=2.0"
+
+      - name: Lint shell scripts
+        run: |
+          bash -n local-ai-stack/setup.sh
+          bash -n local-ai-stack/scripts/creative_engine/run_everything.sh
+
+      - name: Byte-compile all Python
+        run: python -m compileall -q local-ai-stack/scripts
+
+      - name: Unit tests — lead_generation
+        working-directory: local-ai-stack/scripts/lead_generation
+        run: python test_site_auditor.py
+
+      - name: Unit tests — creative_engine
+        working-directory: local-ai-stack/scripts/creative_engine
+        run: python test_creative_engine.py

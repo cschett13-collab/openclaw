@@ -1,0 +1,3 @@
+requests>=2.31
+# urllib3 ships with requests; pinned here because we use urllib3.util.retry directly.
+urllib3>=2.0
