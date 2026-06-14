@@ -34,6 +34,15 @@ export function getCompletionScript(shell: CompletionShell, program: Command): s
   return generateFishCompletion(program);
 }
 
+// Commander option flag strings look like "-s, --shell <shell>". Split on
+// spaces, commas, and pipes so we never emit malformed tokens like "-s,". Prefer
+// the long (`--`) flag for completion (matches the fish/zsh generators); fall
+// back to the first token for short-only options like "-y".
+function primaryOptionFlag(flags: string): string {
+  const parts = flags.split(/[ ,|]+/).filter(Boolean);
+  return parts.find((flag) => flag.startsWith("--")) ?? parts[0] ?? flags;
+}
+
 async function writeCompletionCache(params: {
   program: Command;
   shells: CompletionShell[];
@@ -191,7 +200,7 @@ function generateZshArgs(cmd: Command): string {
   return (cmd.options || [])
     .map((opt) => {
       const flags = opt.flags.split(/[ ,|]+/);
-      const name = flags.find((f) => f.startsWith("--")) || flags[0];
+      const name = primaryOptionFlag(opt.flags);
       const short = flags.find((f) => f.startsWith("-") && !f.startsWith("--"));
       const desc = opt.description
         .replace(/\\/g, "\\\\")
@@ -285,8 +294,8 @@ _${rootCmd}_completion() {
     prev="\${COMP_WORDS[COMP_CWORD-1]}"
     
     # Simple top-level completion for now
-    opts="${program.commands.map((c) => c.name()).join(" ")} ${program.options.map((o) => o.flags.split(" ")[0]).join(" ")}"
-    
+    opts="${program.commands.map((c) => c.name()).join(" ")} ${program.options.map((o) => primaryOptionFlag(o.flags)).join(" ")}"
+
     case "\${prev}" in
       ${program.commands.map((cmd) => generateBashSubcommand(cmd)).join("\n      ")}
     esac
@@ -307,7 +316,7 @@ function generateBashSubcommand(cmd: Command): string {
   // This is a naive implementation; fully recursive bash completion is complex to generate as a single string without improved state tracking.
   // For now, let's provide top-level command recognition.
   return `${cmd.name()})
-        opts="${cmd.commands.map((c) => c.name()).join(" ")} ${cmd.options.map((o) => o.flags.split(" ")[0]).join(" ")}"
+        opts="${cmd.commands.map((c) => c.name()).join(" ")} ${cmd.options.map((o) => primaryOptionFlag(o.flags)).join(" ")}"
         COMPREPLY=( $(compgen -W "\${opts}" -- \${cur}) )
         return 0
         ;;`;
@@ -322,7 +331,7 @@ function generatePowerShellCompletion(program: Command): string {
 
     // Command completion for this level
     const subCommands = cmd.commands.map((c) => c.name());
-    const options = cmd.options.map((o) => o.flags.split(/[ ,|]+/)[0]); // Take first flag
+    const options = cmd.options.map((o) => primaryOptionFlag(o.flags));
     const allCompletions = [...subCommands, ...options].map((s) => `'${s}'`).join(",");
 
     if (fullPath.length > 0 && allCompletions.length > 0) {
@@ -363,7 +372,7 @@ Register-ArgumentCompleter -Native -CommandName ${rootCmd} -ScriptBlock {
     
     # Root command
     if ($commandPath -eq "") {
-         $completions = @(${program.commands.map((c) => `'${c.name()}'`).join(",")}, ${program.options.map((o) => `'${o.flags.split(" ")[0]}'`).join(",")}) 
+         $completions = @(${program.commands.map((c) => `'${c.name()}'`).join(",")}, ${program.options.map((o) => `'${primaryOptionFlag(o.flags)}'`).join(",")})
          $completions | Where-Object { $_ -like "$wordToComplete*" } | ForEach-Object {
             [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterName', $_)
          }
