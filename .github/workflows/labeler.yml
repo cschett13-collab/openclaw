@@ -44,15 +44,20 @@ jobs:
       - uses: actions/create-github-app-token@v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
+        # Fail soft when neither GitHub App secret is configured (e.g. forks),
+        # so the downstream guards can skip and the job stays green.
+        continue-on-error: true
         with:
           app-id: "2971289"
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - uses: actions/labeler@v6
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         with:
           configuration-path: .github/labeler.yml
           repo-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
           sync-labels: true
       - name: Apply PR size label
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
@@ -142,6 +147,7 @@ jobs:
               labels: [targetSizeLabel],
             });
       - name: Apply maintainer or trusted-contributor label
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
@@ -213,6 +219,7 @@ jobs:
             //   });
             // }
       - name: Apply beta-blocker title label
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
@@ -266,6 +273,7 @@ jobs:
               });
             }
       - name: Apply too-many-prs label
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
@@ -478,10 +486,14 @@ jobs:
       - uses: actions/create-github-app-token@v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
+        # Fail soft when neither GitHub App secret is configured (e.g. forks),
+        # so the downstream guards can skip and the job stays green.
+        continue-on-error: true
         with:
           app-id: "2971289"
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - name: Backfill PR labels
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
@@ -778,10 +790,14 @@ jobs:
       - uses: actions/create-github-app-token@v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
+        # Fail soft when neither GitHub App secret is configured (e.g. forks),
+        # so the downstream guards can skip and the job stays green.
+        continue-on-error: true
         with:
           app-id: "2971289"
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - name: Apply maintainer or trusted-contributor label
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
@@ -853,6 +869,7 @@ jobs:
             //   });
             // }
       - name: Apply beta-blocker title label
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}

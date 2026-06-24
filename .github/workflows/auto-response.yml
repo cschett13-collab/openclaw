@@ -41,10 +41,15 @@ jobs:
       - uses: actions/create-github-app-token@v3
         id: app-token-fallback
         if: steps.app-token.outcome == 'failure'
+        # Fail soft when neither GitHub App secret is configured (e.g. forks),
+        # so the downstream guard can skip and the job stays green.
+        continue-on-error: true
         with:
           app-id: "2971289"
           private-key: ${{ secrets.GH_APP_PRIVATE_KEY_FALLBACK }}
       - name: Run Barnacle auto-response
+        # Skip when no App token is available instead of hard-failing.
+        if: ${{ steps.app-token.outputs.token != '' || steps.app-token-fallback.outputs.token != '' }}
         uses: actions/github-script@v9
         with:
           github-token: ${{ steps.app-token.outputs.token || steps.app-token-fallback.outputs.token }}
