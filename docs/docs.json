@@ -982,6 +982,7 @@
                 "group": "Guides",
                 "pages": [
                   "start/openclaw",
+                  "start/offline-autonomous-safe",
                   "start/wizard-cli-reference",
                   "start/wizard-cli-automation"
                 ]
